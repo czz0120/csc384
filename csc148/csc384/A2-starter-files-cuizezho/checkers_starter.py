@@ -18,6 +18,7 @@ class Piece:
     """
     is_red: bool
     is_black: bool
+    char: str
     col: int
     row: int
     is_king: bool
@@ -28,6 +29,7 @@ class Piece:
         """
         self.is_red = is_red
         self.is_black = is_black
+        self.char = 'r' if is_red else 'b'
         self.col = col
         self.row = row
         self.is_king = False
@@ -43,12 +45,12 @@ class Piece:
     # self.orientation)
 
 
-class Red_Piece(Piece):
+class RedPiece(Piece):
     def __init__(self, row: int, col: int) -> None:
         super().__init__(True, False, col, row)
 
 
-class Blk_Piece(Piece):
+class BlkPiece(Piece):
     def __init__(self, row: int, col: int) -> None:
         super().__init__(False, True, col, row)
 
@@ -82,15 +84,13 @@ class State:
         for row in range(self.height):
             for col in range(self.width):
                 char = self.board[row][col]
-                if char in 'rR':
-                    piece = Red_Piece(row, col)
-                    if char.isupper():
-                        piece.is_king = True
+                if char in "rR":
+                    piece = RedPiece(row, col)
+                    piece.is_king = char.isupper()
                     self.red_pieces.append(piece)
-                elif char in 'bB':
-                    piece = Blk_Piece(row, col)
-                    if char.isupper():
-                        piece.is_king = True
+                elif char in "bB":
+                    piece = BlkPiece(row, col)
+                    piece.is_king = char.isupper()
                     self.blk_pieces.append(piece)
 
     def _can_jump_left_up(self, piece: Piece) -> bool:
@@ -136,27 +136,88 @@ class State:
         rslt = []
         if piece.is_red or piece.is_king:
             if self._can_jump_left_up(piece):
-                rslt.append('l_up')
+                rslt.append("l_up")
                 pass
             if self._can_jump_right_up(piece):
-                rslt.append('r_up')
+                rslt.append("r_up")
         if piece.is_black or piece.is_king:
             if self._can_jump_left_down(piece):
-                rslt.append('l_down')
+                rslt.append("l_down")
                 pass
             if self._can_jump_right_down(piece):
-                rslt.append('r_down')
+                rslt.append("r_down")
         return rslt
 
-    def jumps(self, piece: Piece) -> list[Piece]:
+    def jump(self, piece: Piece, direction: str) -> 'State':
+        if direction in self._can_jump(piece):
+            if direction == "l_up":
+                self.board[piece.row - 1][piece.col - 1] = "."
+                piece.row -= 2
+                piece.col -= 2
+                if (not piece.is_king) and (piece.is_red and piece.row == 0) or \
+                        (piece.is_black and piece.row == self.height - 1):
+                    # become a king
+                    piece.is_king = True
+                    piece.char = piece.char.upper()
+                self.board[piece.row - 2][piece.col - 2] = piece.char
+
+            elif direction == "r_up":
+                self.board[piece.row - 1][piece.col + 1] = "."
+                piece.row -= 2
+                piece.col += 2
+                if (not piece.is_king) and (piece.is_red and piece.row == 0) or \
+                        (piece.is_black and piece.row == self.height - 1):
+                    # become a king
+                    piece.is_king = True
+                    piece.char = piece.char.upper()
+                self.board[piece.row - 2][piece.col + 2] = piece.char
+
+            elif direction == "l_down":
+                self.board[piece.row + 1][piece.col - 1] = "."
+                piece.row += 2
+                piece.col -= 2
+                if (not piece.is_king) and (piece.is_red and piece.row == 0) or \
+                        (piece.is_black and piece.row == self.height - 1):
+                    # become a king
+                    piece.is_king = True
+                    piece.char = piece.char.upper()
+                self.board[piece.row + 2][piece.col - 2] = piece.char
+
+            else:  # jump r_down
+                self.board[piece.row + 1][piece.col + 1] = "."
+                piece.row += 2
+                piece.col += 2
+                if (not piece.is_king) and (piece.is_red and piece.row == 0) or \
+                        (piece.is_black and piece.row == self.height - 1):
+                    # become a king
+                    piece.is_king = True
+                    piece.char = piece.char.upper()
+                self.board[piece.row + 2][piece.col + 2] = piece.char
+            return self
+        raise ValueError("Invalid direction!")
+
+    def jumps(self, piece: Piece) -> list['State']:
         rslt = []
-        piece_cpy = copy.deepcopy(piece)
+        # base case
         if not self._can_jump(piece):
             return []
 
+        new_state = copy.deepcopy(self)
+        if piece.is_red:
+            i = self.red_pieces.index(piece)
+            piece_cpy = new_state.red_pieces[i]
+        else:
+            i = self.blk_pieces.index(piece)
+            piece_cpy = new_state.blk_pieces[i]
+
         for direction in self._can_jump(piece):
-            new_piece = self.jump(piece_cpy, direction)
-            rslt += self.jumps(new_piece)
+            new_state.jump(piece_cpy, direction)  # new_state modified
+            next_final_states = new_state.jumps(piece_cpy)
+            if next_final_states:
+                rslt += next_final_states
+            else:
+                rslt += new_state
+        return rslt
 
     def _move_simple(self, piece: Piece) -> list[str]:
         pass
@@ -187,7 +248,6 @@ def get_next_turn(curr_turn):
 
 
 def read_from_file(filename):
-
     f = open(filename)
     lines = f.readlines()
     board = [[str(x) for x in l.rstrip()] for l in lines]
