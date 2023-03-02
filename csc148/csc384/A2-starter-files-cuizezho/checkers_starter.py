@@ -12,8 +12,6 @@ BKING = 'B'
 Empty = '.'
 
 
-
-
 class Piece:
     """
     This represents a piece on the Checker game.
@@ -74,65 +72,97 @@ class State:
     width: int
     height: int
     board: list[list[str]]
-    curr_turn: str  # 'r' or 'b'
     red_pieces: list[Piece]
     blk_pieces: list[Piece]
 
-    def __init__(self, board, curr_turn: str):
+    def __init__(self, board):
         self.board = board
         self.width = 8
         self.height = 8
-        self.curr_turn = curr_turn
         for row in range(self.height):
             for col in range(self.width):
                 char = self.board[row][col]
-                if char == 'r':
+                if char in 'rR':
                     piece = Red_Piece(row, col)
                     if char.isupper():
                         piece.is_king = True
                     self.red_pieces.append(piece)
-                elif char == 'b':
+                elif char in 'bB':
                     piece = Blk_Piece(row, col)
                     if char.isupper():
                         piece.is_king = True
                     self.blk_pieces.append(piece)
 
     def _can_jump_left_up(self, piece: Piece) -> bool:
-        """only considering piece is a king"""
+
         bridge = 'bB' if piece.is_red else 'rR'
         l_up = (piece.row - 1, piece.col - 1)
         if self.board[l_up[0]][l_up[1]] in bridge and \
                 l_up[0] - 1 >= 0 and l_up[1] - 1 >= 0:
-            if self.board[l_up[0] - 1][l_up[1]] == '.':
+            if self.board[l_up[0] - 1][l_up[1] - 1] == '.':
                 return True
         return False
 
     def _can_jump_right_up(self, piece: Piece) -> bool:
-        """only considering piece is a king"""
         bridge = 'bB' if piece.is_red else 'rR'
-        r_up = (piece.row - 1, piece.col - 1)
+        r_up = (piece.row - 1, piece.col + 1)
         if self.board[r_up[0]][r_up[1]] in bridge and \
-                r_up[0] - 1 >= 0 and r_up[1] + 1 < 8:
-            if self.board[r_up[0] - 1][r_up[1]] == '.':
+                r_up[0] - 1 >= 0 and r_up[1] + 1 < self.width:
+            if self.board[r_up[0] - 1][r_up[1] + 1] == '.':
                 return True
         return False
 
+    def _can_jump_left_down(self, piece: Piece) -> bool:
 
+        bridge = 'bB' if piece.is_red else 'rR'
+        l_down = (piece.row + 1, piece.col - 1)
+        if self.board[l_down[0]][l_down[1]] in bridge and \
+                l_down[0] + 1 < self.height and l_down[1] - 1 >= 0:
+            if self.board[l_down[0] + 1][l_down[1] - 1] == '.':
+                return True
+        return False
+
+    def _can_jump_right_down(self, piece: Piece) -> bool:
+
+        bridge = 'bB' if piece.is_red else 'rR'
+        l_down = (piece.row + 1, piece.col + 1)
+        if self.board[l_down[0]][l_down[1]] in bridge and \
+                l_down[0] + 1 < self.height and l_down[1] + 1 >= self.width:
+            if self.board[l_down[0] + 1][l_down[1] + 1] == '.':
+                return True
+        return False
 
     def _can_jump(self, piece: Piece) -> list[str]:
         rslt = []
-        if self.curr_turn == 'r':
-            l_up = (piece.row - 1, piece.col - 1)
-            r_up = (piece.row - 1, piece.col + 1)
-            if not piece.is_king:
-                if self.board[l_up[0]][l_up[1]] == 'b' and \
-                        l_up[0] - 1 >= 0 and l_up[1] - 1 >= 0:
-                    if self.board[l_up[0] - 1][l_up[1]] == '.':
-                        rslt.append("l_up")
-                elif self.board[r_up[0]][r_up[1]] == 'b' and \
-                        l_up[0] - 1 >= 0 and l_up[1] - 1 >= 0:
-                    if self.board[l_up[0] - 1][l_up[1]] == '.':
-                        rslt.append("l_up")
+        if piece.is_red or piece.is_king:
+            if self._can_jump_left_up(piece):
+                rslt.append('l_up')
+                pass
+            if self._can_jump_right_up(piece):
+                rslt.append('r_up')
+        if piece.is_black or piece.is_king:
+            if self._can_jump_left_down(piece):
+                rslt.append('l_down')
+                pass
+            if self._can_jump_right_down(piece):
+                rslt.append('r_down')
+        return rslt
+
+    def jumps(self, piece: Piece) -> list[Piece]:
+        rslt = []
+        piece_cpy = copy.deepcopy(piece)
+        if not self._can_jump(piece):
+            return []
+
+        for direction in self._can_jump(piece):
+            new_piece = piece_cpy.jump(direction)
+            rslt += self.jumps(new_piece)
+
+    def _move_simple(self, piece: Piece) -> list[str]:
+        pass
+
+    def actions(self) -> list[str]:
+        pass
 
     def display(self):
         for i in self.board:
