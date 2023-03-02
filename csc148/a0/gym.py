@@ -133,7 +133,7 @@ class Instructor:
 
     def get_certificates(self) -> list[str]:
         """return a list of certificates the instructor has."""
-        return self._certificates
+        return self._certificates[:]
 
 
 class Gym:

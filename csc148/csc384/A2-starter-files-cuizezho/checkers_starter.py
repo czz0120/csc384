@@ -155,7 +155,7 @@ class State:
             return []
 
         for direction in self._can_jump(piece):
-            new_piece = piece_cpy.jump(direction)
+            new_piece = self.jump(piece_cpy, direction)
             rslt += self.jumps(new_piece)
 
     def _move_simple(self, piece: Piece) -> list[str]:
